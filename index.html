@@ -8,271 +8,128 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --ink: #101319;
-    --panel: #171b23;
-    --panel-edge: #232936;
-    --paper: #ede8e1;
-    --muted: #8a8f9c;
-    --gold: #e3a73b;
-    --gold-dim: #8a6a2c;
-    --teal: #3fa796;
-    --error: #e2694f;
+    --ink: #101319; --panel: #171b23; --panel-edge: #232936;
+    --paper: #ede8e1; --muted: #8a8f9c; --gold: #e3a73b; --gold-dim: #8a6a2c;
+    --teal: #3fa796; --error: #e2694f;
   }
-
   * { box-sizing: border-box; }
-
   body {
-    margin: 0;
-    min-height: 100vh;
-    background: var(--ink);
-    background-image:
-      radial-gradient(circle at 15% 10%, rgba(227, 167, 59, 0.06), transparent 40%),
-      radial-gradient(circle at 85% 90%, rgba(63, 167, 150, 0.05), transparent 45%);
-    color: var(--paper);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 32px 20px;
+    margin: 0; min-height: 100vh; background: var(--ink);
+    background-image: radial-gradient(circle at 15% 10%, rgba(227,167,59,0.06), transparent 40%),
+                       radial-gradient(circle at 85% 90%, rgba(63,167,150,0.05), transparent 45%);
+    color: var(--paper); font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 32px 20px;
   }
-
-  .ticket {
-    width: 100%;
-    max-width: 560px;
-    background: var(--panel);
-    border: 1px solid var(--panel-edge);
-    border-radius: 18px;
-    padding: 40px 36px 32px;
-    opacity: 0;
-    transform: translateY(10px);
-    animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  .wrap { width: 100%; max-width: 560px; }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; font-size: 0.85rem; color: var(--muted); min-height: 24px;
   }
-
-  @keyframes rise {
-    to { opacity: 1; transform: translateY(0); }
+  .topbar a, .topbar button {
+    background: none; border: none; color: var(--muted); font-size: 0.85rem;
+    cursor: pointer; padding: 0; width: auto; margin: 0; font-family: 'Inter', sans-serif;
   }
-
-  .lamp {
-    width: 34px;
-    height: 34px;
-    margin-bottom: 18px;
+  .topbar a:hover, .topbar button:hover { color: var(--paper); }
+  .ticket, .auth-card {
+    background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 18px;
+    padding: 40px 36px 32px; opacity: 0; transform: translateY(10px);
+    animation: rise 0.6s cubic-bezier(0.16,1,0.3,1) forwards;
   }
-
-  h1 {
-    font-family: 'Fraunces', serif;
-    font-weight: 500;
-    font-size: 2.1rem;
-    line-height: 1.15;
-    margin: 0 0 8px;
-    letter-spacing: -0.01em;
-  }
-
-  h1 em {
-    font-style: italic;
-    color: var(--gold);
-  }
-
-  .sub {
-    color: var(--muted);
-    font-size: 0.98rem;
-    margin: 0 0 28px;
-    line-height: 1.5;
-    max-width: 42ch;
-  }
-
-  .field {
-    position: relative;
-  }
-
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+  .lamp { width: 34px; height: 34px; margin-bottom: 18px; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 2.1rem; line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h1 em { font-style: italic; color: var(--gold); }
+  .sub { color: var(--muted); font-size: 0.98rem; margin: 0 0 28px; line-height: 1.5; max-width: 42ch; }
+  .field { position: relative; margin-bottom: 12px; }
   input {
-    width: 100%;
-    padding: 14px 16px;
-    font-size: 15px;
-    font-family: 'Inter', sans-serif;
-    color: var(--paper);
-    background: var(--ink);
-    border: 1px solid var(--panel-edge);
-    border-radius: 10px;
-    outline: none;
-    transition: border-color 0.15s ease;
+    width: 100%; padding: 14px 16px; font-size: 15px; font-family: 'Inter', sans-serif;
+    color: var(--paper); background: var(--ink); border: 1px solid var(--panel-edge);
+    border-radius: 10px; outline: none; transition: border-color 0.15s ease;
   }
-
-  input:focus {
-    border-color: var(--gold-dim);
-  }
-
+  input:focus { border-color: var(--gold-dim); }
   input::placeholder { color: #565c6a; }
-
   .thumb-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 14px;
-    height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: height 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+    display: flex; align-items: center; gap: 12px; margin-top: 14px; height: 0;
+    overflow: hidden; opacity: 0; transition: height 0.25s ease, opacity 0.25s ease;
   }
-
-  .thumb-row.visible {
-    height: 68px;
-    opacity: 1;
+  .thumb-row.visible { height: 68px; opacity: 1; }
+  .thumb-row img { width: 96px; height: 68px; object-fit: cover; border-radius: 8px; border: 1px solid var(--panel-edge); flex-shrink: 0; }
+  .thumb-row span { color: var(--muted); font-size: 0.85rem; }
+  button.primary {
+    width: 100%; margin-top: 6px; background: var(--gold); color: #211605; border: none;
+    padding: 14px 20px; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;
+    border-radius: 10px; cursor: pointer; transition: transform 0.1s ease, background 0.15s ease;
   }
-
-  .thumb-row img {
-    width: 96px;
-    height: 68px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 1px solid var(--panel-edge);
-    flex-shrink: 0;
+  button.primary:hover:not(:disabled) { background: #eeb654; }
+  button.primary:active:not(:disabled) { transform: scale(0.98); }
+  button.primary:disabled {
+    background: var(--panel-edge); color: var(--muted); cursor: default;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
   }
-
-  .thumb-row span {
-    color: var(--muted);
-    font-size: 0.85rem;
+  .link-btn {
+    width: 100%; margin-top: 14px; background: none; border: none; color: var(--muted);
+    font-size: 0.85rem; cursor: pointer; font-family: 'Inter', sans-serif; text-align: center;
   }
-
-  button {
-    width: 100%;
-    margin-top: 18px;
-    background: var(--gold);
-    color: #211605;
-    border: none;
-    padding: 14px 20px;
-    font-size: 15px;
-    font-weight: 600;
-    font-family: 'Inter', sans-serif;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: transform 0.1s ease, background 0.15s ease;
-  }
-
-  button:hover:not(:disabled) { background: #eeb654; }
-  button:active:not(:disabled) { transform: scale(0.98); }
-
-  button:disabled {
-    background: var(--panel-edge);
-    color: var(--muted);
-    cursor: default;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-  }
-
-  .reel {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid #454b59;
-    border-top-color: var(--gold);
-    animation: spin 0.7s linear infinite;
-  }
-
+  .link-btn:hover { color: var(--paper); }
+  .reel { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #454b59; border-top-color: var(--gold); animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  .error-box {
-    display: none;
-    margin-top: 16px;
-    padding: 12px 14px;
-    background: rgba(226, 105, 79, 0.1);
-    border: 1px solid rgba(226, 105, 79, 0.3);
-    border-radius: 8px;
-    color: var(--error);
-    font-size: 0.9rem;
+  .error-box, .info-box {
+    display: none; margin-top: 16px; padding: 12px 14px; border-radius: 8px; font-size: 0.9rem;
   }
-
-  .stub {
-    display: none;
-    margin-top: 28px;
-    padding-top: 24px;
-    position: relative;
-  }
-
-  .stub::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -36px;
-    right: -36px;
-    border-top: 1.5px dashed var(--panel-edge);
-  }
-
-  .stub-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-  }
-
-  .stub-header .label {
-    font-size: 0.78rem;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .badge {
-    font-size: 0.72rem;
-    color: var(--teal);
-    background: rgba(63, 167, 150, 0.12);
-    padding: 3px 8px;
-    border-radius: 20px;
-    display: none;
-  }
-
+  .error-box { background: rgba(226,105,79,0.1); border: 1px solid rgba(226,105,79,0.3); color: var(--error); }
+  .info-box { background: rgba(63,167,150,0.1); border: 1px solid rgba(63,167,150,0.3); color: var(--teal); }
+  .stub { display: none; margin-top: 28px; padding-top: 24px; position: relative; }
+  .stub::before { content: ""; position: absolute; top: 0; left: -36px; right: -36px; border-top: 1.5px dashed var(--panel-edge); }
+  .stub-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .stub-header .label { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .badge { font-size: 0.72rem; color: var(--teal); background: rgba(63,167,150,0.12); padding: 3px 8px; border-radius: 20px; display: none; }
   .copy-btn {
-    width: auto;
-    margin: 0;
-    padding: 5px 12px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    background: transparent;
-    border: 1px solid var(--panel-edge);
-    color: var(--muted);
+    width: auto; margin: 0; padding: 5px 12px; font-size: 0.78rem; font-weight: 500;
+    background: transparent; border: 1px solid var(--panel-edge); color: var(--muted); border-radius: 10px; cursor: pointer;
   }
-
-  .copy-btn:hover:not(:disabled) {
-    background: var(--panel-edge);
-    color: var(--paper);
-  }
-
-  #output {
-    line-height: 1.65;
-    font-size: 0.96rem;
-    color: var(--paper);
-  }
-
-  #output h1, #output h2, #output h3 {
-    font-family: 'Fraunces', serif;
-    font-weight: 500;
-    font-size: 1.15rem;
-    margin: 20px 0 8px;
-  }
-
+  .copy-btn:hover { background: var(--panel-edge); color: var(--paper); }
+  #output { line-height: 1.65; font-size: 0.96rem; color: var(--paper); }
+  #output h1, #output h2, #output h3 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 1.15rem; margin: 20px 0 8px; }
   #output ul { padding-left: 20px; }
   #output li { margin-bottom: 6px; }
   #output strong { color: var(--gold); font-weight: 600; }
   #output p { margin: 0 0 12px; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .ticket { animation: none; opacity: 1; transform: none; }
-    .reel { animation: none; }
+  .history-list { display: none; }
+  .history-item {
+    padding: 14px 0; border-bottom: 1px solid var(--panel-edge); cursor: pointer;
   }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .url { font-size: 0.82rem; color: var(--muted); word-break: break-all; }
+  .history-item .date { font-size: 0.75rem; color: #565c6a; margin-top: 2px; }
+  .history-item:hover .url { color: var(--gold); }
+  .empty-note { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 20px 0; }
+  @media (prefers-reduced-motion: reduce) { .ticket, .auth-card { animation: none; opacity: 1; transform: none; } .reel { animation: none; } }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-  <div class="ticket">
-    <svg class="lamp" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="#e3a73b" stroke-width="1.4"/>
-      <circle cx="12" cy="12" r="3" fill="#e3a73b"/>
-    </svg>
+  <div class="topbar" id="topbar"></div>
 
+  <!-- Auth card: shown when logged out -->
+  <div class="auth-card" id="authCard">
+    <svg class="lamp" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#e3a73b" stroke-width="1.4"/><circle cx="12" cy="12" r="3" fill="#e3a73b"/></svg>
+    <h1 id="authTitle">Sign <em>in</em></h1>
+    <p class="sub" id="authSub">Sign in to summarize videos and keep a history of what you've watched.</p>
+    <div class="field"><input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" /></div>
+    <div class="field"><input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" /></div>
+    <button class="primary" id="authSubmitBtn" onclick="submitAuth()">Sign in</button>
+    <button class="link-btn" onclick="toggleAuthMode()" id="authToggleBtn">Don't have an account? Sign up</button>
+    <div class="error-box" id="authError"></div>
+    <div class="info-box" id="authInfo"></div>
+  </div>
+
+  <!-- Main app: shown when logged in -->
+  <div class="ticket" id="appCard" style="display:none;">
+    <svg class="lamp" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#e3a73b" stroke-width="1.4"/><circle cx="12" cy="12" r="3" fill="#e3a73b"/></svg>
     <h1>YouTube, <em>summarized</em></h1>
     <p class="sub">Paste a link. Get the TL;DR, the key points, and the full story — without watching the whole thing.</p>
 
@@ -284,34 +141,113 @@
       </div>
     </div>
 
-    <button id="submitBtn" onclick="generateSummary()">Summarize video</button>
+    <button class="primary" id="submitBtn" onclick="generateSummary()">Summarize video</button>
+    <button class="link-btn" onclick="toggleHistory()" id="historyToggleBtn">View history</button>
     <div class="error-box" id="error"></div>
+
+    <div class="history-list" id="historyList"></div>
 
     <div class="stub" id="stub">
       <div class="stub-header">
-        <span class="label">
-          ✦ Summary
-          <span class="badge" id="cacheBadge">instant — cached</span>
-        </span>
+        <span class="label">✦ Summary <span class="badge" id="cacheBadge">instant — cached</span></span>
         <button class="copy-btn" id="copyBtn" onclick="copySummary()">Copy</button>
       </div>
       <div id="output"></div>
     </div>
   </div>
 
-<script>
-  let currentSummary = "";
+</div>
 
+<script>
+  // ---- Config: fill in your own project values ----
+  const SUPABASE_URL = "https://lbvmcqfdatesxvbxgcdz.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_Ek3H3fYALmp7kDgYTNvBrw_BNvR1ppJ";
+  const API_BASE = "https://youtube-summarizer-jdvf.onrender.com";
+
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentSummary = "";
+  let authMode = "signin"; // or "signup"
+
+  // ---- Auth ----
+  function toggleAuthMode() {
+    authMode = authMode === "signin" ? "signup" : "signin";
+    document.getElementById("authTitle").innerHTML = authMode === "signin" ? "Sign <em>in</em>" : "Sign <em>up</em>";
+    document.getElementById("authSubmitBtn").innerText = authMode === "signin" ? "Sign in" : "Create account";
+    document.getElementById("authToggleBtn").innerText = authMode === "signin"
+      ? "Don't have an account? Sign up" : "Already have an account? Sign in";
+    document.getElementById("authError").style.display = "none";
+    document.getElementById("authInfo").style.display = "none";
+  }
+
+  async function submitAuth() {
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    const errorBox = document.getElementById("authError");
+    const infoBox = document.getElementById("authInfo");
+    errorBox.style.display = "none";
+    infoBox.style.display = "none";
+
+    if (!email || !password) {
+      errorBox.innerText = "Enter both an email and a password.";
+      errorBox.style.display = "block";
+      return;
+    }
+
+    const { data, error } = authMode === "signin"
+      ? await sb.auth.signInWithPassword({ email, password })
+      : await sb.auth.signUp({ email, password });
+
+    if (error) {
+      errorBox.innerText = error.message;
+      errorBox.style.display = "block";
+      return;
+    }
+
+    if (authMode === "signup" && !data.session) {
+      infoBox.innerText = "Check your email to confirm your account, then sign in.";
+      infoBox.style.display = "block";
+      return;
+    }
+    renderAuthedState();
+  }
+
+  async function signOut() {
+    await sb.auth.signOut();
+    renderAuthedState();
+  }
+
+  async function getToken() {
+    const { data } = await sb.auth.getSession();
+    return data.session ? data.session.access_token : null;
+  }
+
+  async function renderAuthedState() {
+    const { data } = await sb.auth.getSession();
+    const topbar = document.getElementById("topbar");
+    if (data.session) {
+      document.getElementById("authCard").style.display = "none";
+      document.getElementById("appCard").style.display = "block";
+      topbar.innerHTML = `<span>${data.session.user.email}</span><button onclick="signOut()">Sign out</button>`;
+    } else {
+      document.getElementById("authCard").style.display = "block";
+      document.getElementById("appCard").style.display = "none";
+      topbar.innerHTML = "";
+    }
+  }
+
+  sb.auth.onAuthStateChange(() => renderAuthedState());
+  renderAuthedState();
+
+  // ---- Thumbnail preview ----
   function extractVideoId(url) {
     const patterns = [
       /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
       /(?:youtu\.be\/)([\w-]{11})/,
       /(?:youtube\.com\/shorts\/)([\w-]{11})/
     ];
-    for (const p of patterns) {
-      const match = url.match(p);
-      if (match) return match[1];
-    }
+    for (const p of patterns) { const m = url.match(p); if (m) return m[1]; }
     return null;
   }
 
@@ -319,14 +255,15 @@
     const id = extractVideoId(e.target.value.trim());
     const row = document.getElementById("thumbRow");
     const img = document.getElementById("thumbImg");
-    if (id) {
-      img.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
-      row.classList.add("visible");
-    } else {
-      row.classList.remove("visible");
-    }
+    if (id) { img.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg`; row.classList.add("visible"); }
+    else { row.classList.remove("visible"); }
   });
 
+  document.getElementById("videoUrl").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") generateSummary();
+  });
+
+  // ---- Summarize ----
   async function generateSummary() {
     const urlInput = document.getElementById("videoUrl").value.trim();
     const outputDiv = document.getElementById("output");
@@ -336,7 +273,7 @@
     const btn = document.getElementById("submitBtn");
 
     errorDiv.style.display = "none";
-    errorDiv.innerText = "";
+    document.getElementById("historyList").style.display = "none";
 
     if (!urlInput || !extractVideoId(urlInput)) {
       errorDiv.innerText = "That doesn't look like a YouTube link — double check and try again.";
@@ -344,20 +281,21 @@
       return;
     }
 
+    const token = await getToken();
+    if (!token) { renderAuthedState(); return; }
+
     btn.disabled = true;
     btn.innerHTML = '<span class="reel"></span> Summarizing…';
     stub.style.display = "none";
 
     try {
-      const response = await fetch("https://youtube-summarizer-jdvf.onrender.com/summarize", {
+      const response = await fetch(`${API_BASE}/summarize`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ url: urlInput })
       });
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.detail || "Something went wrong on our end.");
-      }
+      if (!response.ok) throw new Error(data.detail || "Something went wrong on our end.");
       currentSummary = data.summary;
       outputDiv.innerHTML = marked.parse(data.summary);
       badge.style.display = data.cached ? "inline-block" : "none";
@@ -380,9 +318,55 @@
     setTimeout(() => { btn.innerText = original; }, 1500);
   }
 
-  document.getElementById("videoUrl").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") generateSummary();
-  });
+  // ---- History ----
+  let historyVisible = false;
+  async function toggleHistory() {
+    const list = document.getElementById("historyList");
+    const stub = document.getElementById("stub");
+    historyVisible = !historyVisible;
+    document.getElementById("historyToggleBtn").innerText = historyVisible ? "Hide history" : "View history";
+
+    if (!historyVisible) { list.style.display = "none"; return; }
+
+    stub.style.display = "none";
+    list.innerHTML = '<div class="empty-note">Loading…</div>';
+    list.style.display = "block";
+
+    const token = await getToken();
+    if (!token) { renderAuthedState(); return; }
+
+    try {
+      const response = await fetch(`${API_BASE}/history`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Couldn't load history.");
+
+      if (!data.history.length) {
+        list.innerHTML = '<div class="empty-note">No summaries yet — paste a link above to get started.</div>';
+        return;
+      }
+
+      list.innerHTML = data.history.map(item => `
+        <div class="history-item" onclick='showHistoryItem(${JSON.stringify(item.summary)})'>
+          <div class="url">${item.video_url}</div>
+          <div class="date">${new Date(item.created_at).toLocaleString()}</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      list.innerHTML = `<div class="empty-note">${err.message}</div>`;
+    }
+  }
+
+  function showHistoryItem(summaryText) {
+    currentSummary = summaryText;
+    document.getElementById("output").innerHTML = marked.parse(summaryText);
+    document.getElementById("cacheBadge").style.display = "none";
+    document.getElementById("historyList").style.display = "none";
+    document.getElementById("stub").style.display = "block";
+    historyVisible = false;
+    document.getElementById("historyToggleBtn").innerText = "View history";
+  }
 </script>
 </body>
 </html>
