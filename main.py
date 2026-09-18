@@ -1,27 +1,5 @@
-import os
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from google import genai
-from google.genai import types
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-
-class SummarizeRequest(BaseModel):
-    url: str
-
-@app.get("/")
-def health_check():
-    return {"status": "ok", "message": "YouTube Summarizer API is running"}
+import asyncio
+from google.genai.errors import APIError
 
 @app.post("/summarize")
 async def summarize_video(req: SummarizeRequest):
@@ -36,26 +14,36 @@ async def summarize_video(req: SummarizeRequest):
     - **Detailed Summary** (Break down the main topics covered)
     """
 
-    try:
-        # Pass the YouTube URL directly into the contents list as a Part
-        response = client.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=[
-                types.Part.from_uri(
-                    file_uri=req.url,
-                    mime_type="video/*"
-                ),
-                prompt
-            ]
-        )
-        return {"summary": response.text}
-    except Exception as e:
-        print(f"Gemini processing error: {repr(e)}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to process video with Gemini: {str(e)}"
-        )
+    # Primary and fallback models if one cluster hits 503
+    candidate_models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"]
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    last_error = None
+    for model_name in candidate_models:
+        for attempt in range(2):  # Try each model up to twice
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=[
+                        types.Part.from_uri(
+                            file_uri=req.url,
+                            mime_type="video/*"
+                        ),
+                        prompt
+                    ]
+                )
+                return {"summary": response.text}
+            except Exception as e:
+                err_str = str(e)
+                last_error = err_str
+                # If high demand / 503, wait briefly and retry or try next model
+                if "503" in err_str or "UNAVAILABLE" in err_str:
+                    await asyncio.sleep(2)
+                    continue
+                else:
+                    # If it's a 400 (e.g. invalid video), don't retry
+                    raise HTTPException(status_code=400, detail=err_str)
+
+    raise HTTPException(
+        status_code=503, 
+        detail=f"All available Gemini models are currently experiencing high demand. Details: {last_error}"
+    )
