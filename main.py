@@ -34,6 +34,10 @@ def extract_video_id(url: str) -> str:
             return match.group(1)
     raise ValueError("Invalid YouTube URL")
 
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "YouTube Summarizer API is running"}
+
 @app.post("/summarize")
 async def summarize_video(req: SummarizeRequest):
     try:
