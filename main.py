@@ -22,6 +22,11 @@ app.add_middleware(
 
 client = genai.Client(api_key=API_KEY)
 
+# Simple in-process cache so repeat requests for the same video are instant.
+# Resets on restart / free-tier cold start — fine for cutting down duplicate
+# calls within a session, not meant as durable storage.
+_cache: dict[str, str] = {}
+
 
 class SummarizeRequest(BaseModel):
     url: str
@@ -37,6 +42,9 @@ async def summarize_video(req: SummarizeRequest):
     if not req.url or "youtu" not in req.url:
         raise HTTPException(status_code=400, detail="Please provide a valid YouTube URL.")
 
+    if req.url in _cache:
+        return {"summary": _cache[req.url], "cached": True}
+
     prompt = """
     You are an expert summarizer. Analyze this YouTube video and provide a comprehensive summary.
     Structure your answer with:
@@ -46,39 +54,55 @@ async def summarize_video(req: SummarizeRequest):
     """
 
     # Free-tier-friendly model lineup, cheapest/fastest first.
-    # gemini-3.5-flash-lite and gemini-3.6-flash both have generous free
-    # quotas on the Gemini API free tier; gemini-3.8-flash is kept as a
-    # stronger fallback if the lighter models are unavailable.
     candidate_models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"]
     last_error = None
 
-    # YouTube URLs are passed via file_data with no mime_type — Gemini
-    # auto-detects it. Using Part.from_uri with a wildcard mime type like
-    # "video/*" is not valid and will cause a 400 from the API.
     video_part = types.Part(file_data=types.FileData(file_uri=req.url))
+
+    # Turn "thinking" down as low as each model allows. These are Gemini 3
+    # series models that do an internal reasoning pass by default — for a
+    # straightforward summarization task that reasoning mostly adds latency,
+    # not quality. "low"/"minimal" cuts response time noticeably.
+    gen_config = types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(thinking_level="low"),
+        max_output_tokens=1024,  # shorter cap = faster generation
+    )
 
     for model_name in candidate_models:
         for attempt in range(2):
             try:
-                # Use the async client (client.aio) so this blocking-style
-                # call doesn't stall the FastAPI event loop for other
-                # requests (including the health check) while it runs.
                 response = await client.aio.models.generate_content(
                     model=model_name,
                     contents=[video_part, prompt],
+                    config=gen_config,
                 )
-                return {"summary": response.text}
+                _cache[req.url] = response.text
+                return {"summary": response.text, "cached": False}
             except Exception as e:
                 err_str = str(e)
                 last_error = err_str
-                # Server overloaded (503): brief backoff, then retry same model.
                 if "503" in err_str or "UNAVAILABLE" in err_str:
-                    await asyncio.sleep(2)
-                    continue
-                # Model deprecated / not found: move to the next candidate immediately.
+                    # Short backoff, single retry — don't compound latency.
+                    if attempt == 0:
+                        await asyncio.sleep(0.5)
+                        continue
+                    break
                 elif "404" in err_str or "NOT_FOUND" in err_str:
                     break
-                # Anything else (bad request, invalid URL, quota exceeded): fail fast.
+                elif "thinking_level" in err_str or "INVALID_ARGUMENT" in err_str:
+                    # A candidate model may not support thinking_level (e.g.
+                    # if it's not a Gemini 3-series model) — retry it once
+                    # without the config rather than burning the fallback chain.
+                    try:
+                        response = await client.aio.models.generate_content(
+                            model=model_name,
+                            contents=[video_part, prompt],
+                        )
+                        _cache[req.url] = response.text
+                        return {"summary": response.text, "cached": False}
+                    except Exception as e2:
+                        last_error = str(e2)
+                        break
                 else:
                     raise HTTPException(status_code=400, detail=err_str)
 
