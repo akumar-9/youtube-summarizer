@@ -6,9 +6,13 @@ from pydantic import BaseModel
 from google import genai
 from google.genai import types
 
-app = FastAPI()
+# Fail fast if the API key isn't configured, instead of a cryptic auth
+# error on the first request.
+API_KEY = os.environ.get("GEMINI_API_KEY")
+if not API_KEY:
+    raise RuntimeError("GEMINI_API_KEY environment variable not set")
 
-# Enable CORS for browser requests
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,14 +20,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+client = genai.Client(api_key=API_KEY)
+
 
 class SummarizeRequest(BaseModel):
     url: str
 
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "YouTube Summarizer API is running"}
+
 
 @app.post("/summarize")
 async def summarize_video(req: SummarizeRequest):
@@ -38,40 +45,49 @@ async def summarize_video(req: SummarizeRequest):
     - **Detailed Summary** (Break down the main topics covered)
     """
 
-    # Pool of active models to try in case of 503 capacity spikes
-    candidate_models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.6-flash"]
-
+    # Free-tier-friendly model lineup, cheapest/fastest first.
+    # gemini-3.5-flash-lite and gemini-3.6-flash both have generous free
+    # quotas on the Gemini API free tier; gemini-3.8-flash is kept as a
+    # stronger fallback if the lighter models are unavailable.
+    candidate_models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"]
     last_error = None
+
+    # YouTube URLs are passed via file_data with no mime_type — Gemini
+    # auto-detects it. Using Part.from_uri with a wildcard mime type like
+    # "video/*" is not valid and will cause a 400 from the API.
+    video_part = types.Part(file_data=types.FileData(file_uri=req.url))
+
     for model_name in candidate_models:
         for attempt in range(2):
             try:
-                response = client.models.generate_content(
+                # Use the async client (client.aio) so this blocking-style
+                # call doesn't stall the FastAPI event loop for other
+                # requests (including the health check) while it runs.
+                response = await client.aio.models.generate_content(
                     model=model_name,
-                    contents=[
-                        types.Part.from_uri(
-                            file_uri=req.url,
-                            mime_type="video/*"
-                        ),
-                        prompt
-                    ]
+                    contents=[video_part, prompt],
                 )
                 return {"summary": response.text}
             except Exception as e:
                 err_str = str(e)
                 last_error = err_str
-                # If server is overloaded (503), wait 2s and retry or switch model
+                # Server overloaded (503): brief backoff, then retry same model.
                 if "503" in err_str or "UNAVAILABLE" in err_str:
                     await asyncio.sleep(2)
                     continue
+                # Model deprecated / not found: move to the next candidate immediately.
+                elif "404" in err_str or "NOT_FOUND" in err_str:
+                    break
+                # Anything else (bad request, invalid URL, quota exceeded): fail fast.
                 else:
-                    # Fail fast on bad requests (invalid URL, permissions, etc.)
                     raise HTTPException(status_code=400, detail=err_str)
 
     raise HTTPException(
         status_code=503,
-        detail=f"All models temporarily unavailable. Details: {last_error}"
+        detail=f"All candidate models failed. Details: {last_error}",
     )
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
