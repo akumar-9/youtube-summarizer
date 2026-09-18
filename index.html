@@ -99,12 +99,22 @@
   #output p { margin: 0 0 12px; }
   .history-list { display: none; }
   .history-item {
-    padding: 14px 0; border-bottom: 1px solid var(--panel-edge); cursor: pointer;
+    display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--panel-edge); cursor: pointer;
   }
   .history-item:last-child { border-bottom: none; }
-  .history-item .url { font-size: 0.82rem; color: var(--muted); word-break: break-all; }
-  .history-item .date { font-size: 0.75rem; color: #565c6a; margin-top: 2px; }
-  .history-item:hover .url { color: var(--gold); }
+  .history-item img {
+    width: 88px; height: 50px; object-fit: cover; border-radius: 6px;
+    border: 1px solid var(--panel-edge); flex-shrink: 0; background: var(--ink);
+  }
+  .history-meta { min-width: 0; }
+  .h-title {
+    font-size: 0.9rem; font-weight: 500; color: var(--paper);
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .h-channel { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+  .history-item .date { font-size: 0.72rem; color: #565c6a; margin-top: 3px; }
+  .history-item:hover .h-title { color: var(--gold); }
   .empty-note { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 20px 0; }
   @media (prefers-reduced-motion: reduce) { .ticket, .auth-card { animation: none; opacity: 1; transform: none; } .reel { animation: none; } }
 </style>
@@ -320,6 +330,14 @@
 
   // ---- History ----
   let historyVisible = false;
+  let historyData = [];
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
   async function toggleHistory() {
     const list = document.getElementById("historyList");
     const stub = document.getElementById("stub");
@@ -347,10 +365,15 @@
         return;
       }
 
-      list.innerHTML = data.history.map(item => `
-        <div class="history-item" onclick='showHistoryItem(${JSON.stringify(item.summary)})'>
-          <div class="url">${item.video_url}</div>
-          <div class="date">${new Date(item.created_at).toLocaleString()}</div>
+      historyData = data.history;
+      list.innerHTML = historyData.map((item, i) => `
+        <div class="history-item" onclick="showHistoryItem(${i})">
+          <img src="${escapeHtml(item.thumbnail_url) || ''}" alt="" onerror="this.style.visibility='hidden'" />
+          <div class="history-meta">
+            <div class="h-title">${escapeHtml(item.title) || escapeHtml(item.video_url)}</div>
+            <div class="h-channel">${escapeHtml(item.channel_name) || ''}</div>
+            <div class="date">Summarized ${new Date(item.created_at).toLocaleDateString()}</div>
+          </div>
         </div>
       `).join("");
     } catch (err) {
@@ -358,9 +381,10 @@
     }
   }
 
-  function showHistoryItem(summaryText) {
-    currentSummary = summaryText;
-    document.getElementById("output").innerHTML = marked.parse(summaryText);
+  function showHistoryItem(index) {
+    const item = historyData[index];
+    currentSummary = item.summary;
+    document.getElementById("output").innerHTML = marked.parse(item.summary);
     document.getElementById("cacheBadge").style.display = "none";
     document.getElementById("historyList").style.display = "none";
     document.getElementById("stub").style.display = "block";
