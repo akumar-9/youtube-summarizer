@@ -1,5 +1,6 @@
 import os
 import asyncio
+import httpx
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -42,6 +43,27 @@ _cache: dict[str, str] = {}
 
 class SummarizeRequest(BaseModel):
     url: str
+
+
+async def fetch_video_metadata(url: str) -> dict:
+    """Best-effort fetch of title/channel/thumbnail via YouTube's public
+    oEmbed endpoint. Needs no API key. Returns Nones on any failure so a
+    metadata hiccup never blocks the summary itself."""
+    try:
+        async with httpx.AsyncClient(timeout=5) as http_client:
+            resp = await http_client.get(
+                "https://www.youtube.com/oembed",
+                params={"url": url, "format": "json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return {
+                "title": data.get("title"),
+                "channel_name": data.get("author_name"),
+                "thumbnail_url": data.get("thumbnail_url"),
+            }
+    except Exception:
+        return {"title": None, "channel_name": None, "thumbnail_url": None}
 
 
 def get_current_user(authorization: str = Header(None)) -> str:
@@ -87,10 +109,32 @@ async def summarize_video(req: SummarizeRequest, user_id: str = Depends(get_curr
     candidate_models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash"]
     last_error = None
     video_part = types.Part(file_data=types.FileData(file_uri=req.url))
+
+    # Fetch title/channel/thumbnail in parallel with the model call below —
+    # it's an independent network request, so this adds zero extra latency.
+    metadata_task = asyncio.create_task(fetch_video_metadata(req.url))
     gen_config = types.GenerateContentConfig(
         thinking_config=types.ThinkingConfig(thinking_level="low"),
         max_output_tokens=1024,
     )
+
+    async def save_and_respond(summary_text: str) -> dict:
+        _cache[cache_key] = summary_text
+        metadata = await metadata_task
+        # Persist to history. Non-fatal if this write fails — the user
+        # still gets their summary either way.
+        try:
+            supabase.table("summaries").insert({
+                "user_id": user_id,
+                "video_url": req.url,
+                "summary": summary_text,
+                "title": metadata["title"],
+                "channel_name": metadata["channel_name"],
+                "thumbnail_url": metadata["thumbnail_url"],
+            }).execute()
+        except Exception:
+            pass
+        return {"summary": summary_text, "cached": False}
 
     for model_name in candidate_models:
         for attempt in range(2):
@@ -100,21 +144,7 @@ async def summarize_video(req: SummarizeRequest, user_id: str = Depends(get_curr
                     contents=[video_part, prompt],
                     config=gen_config,
                 )
-                summary_text = response.text
-                _cache[cache_key] = summary_text
-
-                # Persist to history. Non-fatal if this write fails — the
-                # user still gets their summary either way.
-                try:
-                    supabase.table("summaries").insert({
-                        "user_id": user_id,
-                        "video_url": req.url,
-                        "summary": summary_text,
-                    }).execute()
-                except Exception:
-                    pass
-
-                return {"summary": summary_text, "cached": False}
+                return await save_and_respond(response.text)
             except Exception as e:
                 err_str = str(e)
                 last_error = err_str
@@ -126,21 +156,14 @@ async def summarize_video(req: SummarizeRequest, user_id: str = Depends(get_curr
                 elif "404" in err_str or "NOT_FOUND" in err_str:
                     break
                 elif "thinking_level" in err_str or "INVALID_ARGUMENT" in err_str:
+                    # This candidate model doesn't support thinking_level —
+                    # retry it once without that config rather than burning
+                    # the whole fallback chain.
                     try:
                         response = await client.aio.models.generate_content(
                             model=model_name, contents=[video_part, prompt],
                         )
-                        summary_text = response.text
-                        _cache[cache_key] = summary_text
-                        try:
-                            supabase.table("summaries").insert({
-                                "user_id": user_id,
-                                "video_url": req.url,
-                                "summary": summary_text,
-                            }).execute()
-                        except Exception:
-                            pass
-                        return {"summary": summary_text, "cached": False}
+                        return await save_and_respond(response.text)
                     except Exception as e2:
                         last_error = str(e2)
                         break
@@ -157,7 +180,7 @@ async def summarize_video(req: SummarizeRequest, user_id: str = Depends(get_curr
 def get_history(user_id: str = Depends(get_current_user)):
     result = (
         supabase.table("summaries")
-        .select("id, video_url, summary, created_at")
+        .select("id, video_url, summary, title, channel_name, thumbnail_url, created_at")
         .eq("user_id", user_id)
         .order("created_at", desc=True)
         .limit(50)
