@@ -39,7 +39,7 @@ async def summarize_video(req: SummarizeRequest):
     try:
         # Pass the YouTube URL directly into the contents list as a Part
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.6-flash',
             contents=[
                 types.Part.from_uri(
                     file_uri=req.url,
