@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>YouTube, Summarized</title>
+<meta name="theme-color" content="#101319" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Summarizer" />
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMTAxMzE5Ii8+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2UzYTczYiIgc3Ryb2tlLXdpZHRoPSI2Ii8+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTIiIGZpbGw9IiNlM2E3M2IiLz4KPC9zdmc+Cg==" />
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMTAxMzE5Ii8+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2UzYTczYiIgc3Ryb2tlLXdpZHRoPSI2Ii8+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTIiIGZpbGw9IiNlM2E3M2IiLz4KPC9zdmc+Cg==" />
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22YouTube%20Summarized%22%2C%20%22short_name%22%3A%20%22Summarizer%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22background_color%22%3A%20%22%23101319%22%2C%20%22theme_color%22%3A%20%22%23101319%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMTAxMzE5Ii8%2BCiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2UzYTczYiIgc3Ryb2tlLXdpZHRoPSI2Ii8%2BCiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iMTIiIGZpbGw9IiNlM2E3M2IiLz4KPC9zdmc%2BCg%3D%3D%22%2C%20%22sizes%22%3A%20%22100x100%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%7D%5D%7D" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -45,7 +52,7 @@
   .sub { color: var(--muted); font-size: 0.98rem; margin: 0 0 28px; line-height: 1.5; max-width: 42ch; }
   .field { position: relative; margin-bottom: 12px; }
   input {
-    width: 100%; padding: 14px 16px; font-size: 15px; font-family: 'Inter', sans-serif;
+    width: 100%; padding: 14px 16px; font-size: 16px; font-family: 'Inter', sans-serif;
     color: var(--paper); background: var(--ink); border: 1px solid var(--panel-edge);
     border-radius: 10px; outline: none; transition: border-color 0.15s ease;
   }
@@ -102,7 +109,7 @@
     display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--panel-edge); cursor: pointer;
   }
   .history-item:last-child { border-bottom: none; }
-  .history-item img {
+  .history-item img, .history-thumb-placeholder {
     width: 88px; height: 50px; object-fit: cover; border-radius: 6px;
     border: 1px solid var(--panel-edge); flex-shrink: 0; background: var(--ink);
   }
@@ -117,6 +124,14 @@
   .history-item:hover .h-title { color: var(--gold); }
   .empty-note { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 20px 0; }
   @media (prefers-reduced-motion: reduce) { .ticket, .auth-card { animation: none; opacity: 1; transform: none; } .reel { animation: none; } }
+
+  @media (max-width: 420px) {
+    body { padding: 20px 12px; }
+    .ticket, .auth-card { padding: 28px 22px 24px; border-radius: 14px; }
+    h1 { font-size: 1.7rem; }
+    .sub { font-size: 0.92rem; margin-bottom: 22px; }
+    .stub::before { left: -22px; right: -22px; }
+  }
 </style>
 </head>
 <body>
@@ -368,7 +383,9 @@
       historyData = data.history;
       list.innerHTML = historyData.map((item, i) => `
         <div class="history-item" onclick="showHistoryItem(${i})">
-          <img src="${escapeHtml(item.thumbnail_url) || ''}" alt="" onerror="this.style.visibility='hidden'" />
+          ${item.thumbnail_url
+            ? `<img src="${escapeHtml(item.thumbnail_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'history-thumb-placeholder'}))" />`
+            : `<div class="history-thumb-placeholder"></div>`}
           <div class="history-meta">
             <div class="h-title">${escapeHtml(item.title) || escapeHtml(item.video_url)}</div>
             <div class="h-channel">${escapeHtml(item.channel_name) || ''}</div>
