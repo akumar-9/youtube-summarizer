@@ -76,7 +76,7 @@
       btn.innerText = "Summarizing...";
 
       try {
-        const response = await fetch("http://localhost:8000/summarize", {
+        const response = await fetch("http://youtube-summarizer-jdvf.onrender.com/summarize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: urlInput })
