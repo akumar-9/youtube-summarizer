@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI YouTube Summarizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background-color: #f9fafb;
+      color: #111827;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:disabled { background-color: #93c5fd; }
+    #output {
+      margin-top: 24px;
+      line-height: 1.6;
+    }
+    .error { color: #dc2626; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>YouTube AI Summarizer</h2>
+    <p>Paste any YouTube video link to get an instant summary.</p>
+    <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." />
+    <button id="submitBtn" onclick="generateSummary()">Summarize Video</button>
+    <div id="error" class="error"></div>
+    <div id="output"></div>
+  </div>
+
+  <script>
+    async function generateSummary() {
+      const urlInput = document.getElementById("videoUrl").value.trim();
+      const outputDiv = document.getElementById("output");
+      const errorDiv = document.getElementById("error");
+      const btn = document.getElementById("submitBtn");
+
+      errorDiv.innerText = "";
+      outputDiv.innerHTML = "";
+
+      if (!urlInput) {
+        errorDiv.innerText = "Please enter a valid YouTube link.";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = "Summarizing...";
+
+      try {
+        const response = await fetch("http://localhost:8000/summarize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: urlInput })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || "Something went wrong");
+        }
+
+        // Parse markdown output into HTML
+        outputDiv.innerHTML = marked.parse(data.summary);
+      } catch (err) {
+        errorDiv.innerText = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Summarize Video";
+      }
+    }
+  </script>
+</body>
+</html>
