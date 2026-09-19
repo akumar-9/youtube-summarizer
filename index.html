@@ -81,6 +81,15 @@
     font-size: 0.85rem; cursor: pointer; font-family: 'Inter', sans-serif; text-align: center;
   }
   .link-btn:hover { color: var(--paper); }
+  .divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--muted); font-size: 0.78rem; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--panel-edge); }
+  .google-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--ink); color: var(--paper); border: 1px solid var(--panel-edge);
+    padding: 12px 20px; font-size: 14px; font-weight: 500; font-family: 'Inter', sans-serif;
+    border-radius: 10px; cursor: pointer; transition: background 0.15s ease;
+  }
+  .google-btn:hover { background: var(--panel-edge); }
   .reel { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #454b59; border-top-color: var(--gold); animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .error-box, .info-box {
@@ -104,11 +113,14 @@
   #output li { margin-bottom: 6px; }
   #output strong { color: var(--gold); font-weight: 600; }
   #output p { margin: 0 0 12px; }
-  .history-list { display: none; }
+  .history-panel { margin-top: 14px; }
+  #historySearch { margin-bottom: 4px; font-size: 14px; padding: 11px 14px; }
+  .history-list { min-height: 0; }
   .history-item {
-    display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--panel-edge); cursor: pointer;
+    display: flex; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--panel-edge);
   }
   .history-item:last-child { border-bottom: none; }
+  .history-item-main { display: flex; gap: 12px; flex: 1; min-width: 0; cursor: pointer; }
   .history-item img, .history-thumb-placeholder {
     width: 88px; height: 50px; object-fit: cover; border-radius: 6px;
     border: 1px solid var(--panel-edge); flex-shrink: 0; background: var(--ink);
@@ -122,6 +134,13 @@
   .h-channel { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
   .history-item .date { font-size: 0.72rem; color: #565c6a; margin-top: 3px; }
   .history-item:hover .h-title { color: var(--gold); }
+  .delete-btn {
+    width: auto; margin: 0; background: none; border: none; color: var(--muted);
+    font-size: 0.9rem; cursor: pointer; padding: 6px 10px; border-radius: 6px; flex-shrink: 0;
+  }
+  .delete-btn:hover { color: var(--error); background: rgba(226,105,79,0.1); }
+  .ts-link { color: var(--gold); text-decoration: none; font-weight: 600; border-bottom: 1px dotted var(--gold-dim); }
+  .ts-link:hover { border-bottom-style: solid; }
   .empty-note { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 20px 0; }
   @media (prefers-reduced-motion: reduce) { .ticket, .auth-card { animation: none; opacity: 1; transform: none; } .reel { animation: none; } }
 
@@ -147,6 +166,19 @@
     <div class="field"><input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" /></div>
     <div class="field"><input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" /></div>
     <button class="primary" id="authSubmitBtn" onclick="submitAuth()">Sign in</button>
+
+    <div class="divider"><span>or</span></div>
+
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18">
+        <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.98v2.33A9 9 0 0 0 9 18z"/>
+        <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.98A9 9 0 0 0 0 9c0 1.45.35 2.83.98 4.03l2.97-2.33z"/>
+        <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .98 4.97l2.97 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+      </svg>
+      Continue with Google
+    </button>
+
     <button class="link-btn" onclick="toggleAuthMode()" id="authToggleBtn">Don't have an account? Sign up</button>
     <div class="error-box" id="authError"></div>
     <div class="info-box" id="authInfo"></div>
@@ -170,7 +202,11 @@
     <button class="link-btn" onclick="toggleHistory()" id="historyToggleBtn">View history</button>
     <div class="error-box" id="error"></div>
 
-    <div class="history-list" id="historyList"></div>
+    <div class="history-panel" id="historyPanel" style="display:none;">
+      <input type="text" id="historySearch" placeholder="Search your history…" autocomplete="off" />
+      <div class="error-box" id="historyError"></div>
+      <div class="history-list" id="historyList"></div>
+    </div>
 
     <div class="stub" id="stub">
       <div class="stub-header">
@@ -185,8 +221,8 @@
 
 <script>
   // ---- Config: fill in your own project values ----
-  const SUPABASE_URL = "https://lbvmcqfdatesxvbxgcdz.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_Ek3H3fYALmp7kDgYTNvBrw_BNvR1ppJ";
+  const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
   const API_BASE = "https://youtube-summarizer-jdvf.onrender.com";
 
   const { createClient } = supabase;
@@ -238,6 +274,18 @@
     renderAuthedState();
   }
 
+  async function signInWithGoogle() {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) {
+      const errorBox = document.getElementById("authError");
+      errorBox.innerText = error.message;
+      errorBox.style.display = "block";
+    }
+  }
+
   async function signOut() {
     await sb.auth.signOut();
     renderAuthedState();
@@ -259,6 +307,30 @@
       document.getElementById("authCard").style.display = "block";
       document.getElementById("appCard").style.display = "none";
       topbar.innerHTML = "";
+    }
+    handleIncomingUrl(!!data.session);
+  }
+
+  // Pre-fills (and optionally auto-runs) a summary when arriving via
+  // ?url=<video>&autorun=1 — how the browser extension hands off a video
+  // without the user copy-pasting anything.
+  let autoRunHandled = false;
+  function handleIncomingUrl(isLoggedIn) {
+    const params = new URLSearchParams(window.location.search);
+    const incomingUrl = params.get("url");
+    if (!incomingUrl) return;
+
+    const input = document.getElementById("videoUrl");
+    if (!input.value) {
+      input.value = incomingUrl;
+      input.dispatchEvent(new Event("input"));
+    }
+
+    if (isLoggedIn && params.get("autorun") === "1" && !autoRunHandled) {
+      autoRunHandled = true;
+      // Clean the URL so refreshing the tab later doesn't re-trigger this.
+      window.history.replaceState({}, document.title, window.location.pathname);
+      generateSummary();
     }
   }
 
@@ -288,7 +360,48 @@
     if (e.key === "Enter") generateSummary();
   });
 
-  // ---- Summarize ----
+  // ---- Chapter timestamps → clickable links ----
+  // The model outputs plain "MM:SS — description" text; this walks the
+  // rendered output and turns those timestamps into links that jump to
+  // that exact second in the video.
+  function linkifyTimestamps(container, videoId) {
+    if (!videoId) return;
+    const tsPattern = /\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b/g;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+
+    nodes.forEach((textNode) => {
+      const text = textNode.nodeValue;
+      tsPattern.lastIndex = 0;
+      if (!tsPattern.test(text)) return;
+      tsPattern.lastIndex = 0;
+
+      const frag = document.createDocumentFragment();
+      let lastIndex = 0;
+      let match;
+      while ((match = tsPattern.exec(text)) !== null) {
+        const [full, hh, mm, ss] = match;
+        const totalSeconds = (hh ? parseInt(hh, 10) * 3600 : 0) + parseInt(mm, 10) * 60 + parseInt(ss, 10);
+        frag.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+        const link = document.createElement("a");
+        link.href = `https://www.youtube.com/watch?v=${videoId}&t=${totalSeconds}s`;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.className = "ts-link";
+        link.textContent = full;
+        frag.appendChild(link);
+        lastIndex = match.index + full.length;
+      }
+      frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+      textNode.parentNode.replaceChild(frag, textNode);
+    });
+  }
+
+  // ---- Summarize (streamed) ----
+  let currentVideoId = null;
+
   async function generateSummary() {
     const urlInput = document.getElementById("videoUrl").value.trim();
     const outputDiv = document.getElementById("output");
@@ -298,7 +411,9 @@
     const btn = document.getElementById("submitBtn");
 
     errorDiv.style.display = "none";
-    document.getElementById("historyList").style.display = "none";
+    document.getElementById("historyPanel").style.display = "none";
+    historyVisible = false;
+    document.getElementById("historyToggleBtn").innerText = "View history";
 
     if (!urlInput || !extractVideoId(urlInput)) {
       errorDiv.innerText = "That doesn't look like a YouTube link — double check and try again.";
@@ -309,9 +424,13 @@
     const token = await getToken();
     if (!token) { renderAuthedState(); return; }
 
+    currentVideoId = extractVideoId(urlInput);
     btn.disabled = true;
     btn.innerHTML = '<span class="reel"></span> Summarizing…';
-    stub.style.display = "none";
+    badge.style.display = "none";
+    outputDiv.innerHTML = "";
+    currentSummary = "";
+    stub.style.display = "block";
 
     try {
       const response = await fetch(`${API_BASE}/summarize`, {
@@ -319,15 +438,32 @@
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ url: urlInput })
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Something went wrong on our end.");
-      currentSummary = data.summary;
-      outputDiv.innerHTML = marked.parse(data.summary);
-      badge.style.display = data.cached ? "inline-block" : "none";
-      stub.style.display = "block";
+
+      if (!response.ok) {
+        let detail = "Something went wrong on our end.";
+        try { const data = await response.json(); detail = data.detail || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+
+      const isCached = response.headers.get("X-Cache") === "HIT";
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        currentSummary = buffer;
+        outputDiv.innerHTML = marked.parse(buffer);
+      }
+
+      linkifyTimestamps(outputDiv, currentVideoId);
+      badge.style.display = isCached ? "inline-block" : "none";
     } catch (err) {
       errorDiv.innerText = err.message;
       errorDiv.style.display = "block";
+      stub.style.display = "none";
     } finally {
       btn.disabled = false;
       btn.innerText = "Summarize video";
@@ -346,6 +482,7 @@
   // ---- History ----
   let historyVisible = false;
   let historyData = [];
+  let searchDebounceTimer = null;
 
   function escapeHtml(str) {
     const div = document.createElement("div");
@@ -354,43 +491,59 @@
   }
 
   async function toggleHistory() {
-    const list = document.getElementById("historyList");
+    const panel = document.getElementById("historyPanel");
     const stub = document.getElementById("stub");
     historyVisible = !historyVisible;
     document.getElementById("historyToggleBtn").innerText = historyVisible ? "Hide history" : "View history";
 
-    if (!historyVisible) { list.style.display = "none"; return; }
+    if (!historyVisible) { panel.style.display = "none"; return; }
 
     stub.style.display = "none";
+    document.getElementById("historySearch").value = "";
+    document.getElementById("historyError").style.display = "none";
+    panel.style.display = "block";
+    await loadHistory();
+  }
+
+  document.getElementById("historySearch").addEventListener("input", (e) => {
+    clearTimeout(searchDebounceTimer);
+    const q = e.target.value.trim();
+    searchDebounceTimer = setTimeout(() => loadHistory(q), 300);
+  });
+
+  async function loadHistory(query = "") {
+    const list = document.getElementById("historyList");
     list.innerHTML = '<div class="empty-note">Loading…</div>';
-    list.style.display = "block";
 
     const token = await getToken();
     if (!token) { renderAuthedState(); return; }
 
     try {
-      const response = await fetch(`${API_BASE}/history`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const url = query ? `${API_BASE}/history?q=${encodeURIComponent(query)}` : `${API_BASE}/history`;
+      const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Couldn't load history.");
 
       if (!data.history.length) {
-        list.innerHTML = '<div class="empty-note">No summaries yet — paste a link above to get started.</div>';
+        list.innerHTML = `<div class="empty-note">${query ? "No matches found." : "No summaries yet — paste a link above to get started."}</div>`;
+        historyData = [];
         return;
       }
 
       historyData = data.history;
       list.innerHTML = historyData.map((item, i) => `
-        <div class="history-item" onclick="showHistoryItem(${i})">
-          ${item.thumbnail_url
-            ? `<img src="${escapeHtml(item.thumbnail_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'history-thumb-placeholder'}))" />`
-            : `<div class="history-thumb-placeholder"></div>`}
-          <div class="history-meta">
-            <div class="h-title">${escapeHtml(item.title) || escapeHtml(item.video_url)}</div>
-            <div class="h-channel">${escapeHtml(item.channel_name) || ''}</div>
-            <div class="date">Summarized ${new Date(item.created_at).toLocaleDateString()}</div>
+        <div class="history-item" data-index="${i}">
+          <div class="history-item-main" onclick="showHistoryItem(${i})">
+            ${item.thumbnail_url
+              ? `<img src="${escapeHtml(item.thumbnail_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'history-thumb-placeholder'}))" />`
+              : `<div class="history-thumb-placeholder"></div>`}
+            <div class="history-meta">
+              <div class="h-title">${escapeHtml(item.title) || escapeHtml(item.video_url)}</div>
+              <div class="h-channel">${escapeHtml(item.channel_name) || ''}</div>
+              <div class="date">Summarized ${new Date(item.created_at).toLocaleDateString()}</div>
+            </div>
           </div>
+          <button class="delete-btn" onclick="deleteHistoryItem(event, '${item.id}', ${i})" title="Delete">✕</button>
         </div>
       `).join("");
     } catch (err) {
@@ -398,12 +551,40 @@
     }
   }
 
+  async function deleteHistoryItem(event, id, index) {
+    event.stopPropagation();
+    const errorBox = document.getElementById("historyError");
+    errorBox.style.display = "none";
+
+    const token = await getToken();
+    if (!token) { renderAuthedState(); return; }
+
+    try {
+      const response = await fetch(`${API_BASE}/history/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || "Couldn't delete this item.");
+      }
+      const el = document.querySelector(`.history-item[data-index="${index}"]`);
+      if (el) el.remove();
+    } catch (err) {
+      errorBox.innerText = err.message;
+      errorBox.style.display = "block";
+    }
+  }
+
   function showHistoryItem(index) {
     const item = historyData[index];
     currentSummary = item.summary;
-    document.getElementById("output").innerHTML = marked.parse(item.summary);
+    currentVideoId = extractVideoId(item.video_url);
+    const outputDiv = document.getElementById("output");
+    outputDiv.innerHTML = marked.parse(item.summary);
+    linkifyTimestamps(outputDiv, currentVideoId);
     document.getElementById("cacheBadge").style.display = "none";
-    document.getElementById("historyList").style.display = "none";
+    document.getElementById("historyPanel").style.display = "none";
     document.getElementById("stub").style.display = "block";
     historyVisible = false;
     document.getElementById("historyToggleBtn").innerText = "View history";
