@@ -114,6 +114,13 @@
   #output strong { color: var(--gold); font-weight: 600; }
   #output p { margin: 0 0 12px; }
   .history-panel { margin-top: 14px; }
+  .history-controls { display: flex; gap: 8px; margin-bottom: 4px; }
+  .history-controls input { flex: 1; min-width: 0; }
+  #historySort {
+    font-size: 13px; padding: 0 10px; font-family: 'Inter', sans-serif;
+    color: var(--paper); background: var(--ink); border: 1px solid var(--panel-edge);
+    border-radius: 10px; outline: none; cursor: pointer;
+  }
   #historySearch { margin-bottom: 4px; font-size: 14px; padding: 11px 14px; }
   .history-list { min-height: 0; }
   .history-item {
@@ -203,7 +210,13 @@
     <div class="error-box" id="error"></div>
 
     <div class="history-panel" id="historyPanel" style="display:none;">
-      <input type="text" id="historySearch" placeholder="Search your history…" autocomplete="off" />
+      <div class="history-controls">
+        <input type="text" id="historySearch" placeholder="Search your history…" autocomplete="off" />
+        <select id="historySort">
+          <option value="desc">Newest first</option>
+          <option value="asc">Oldest first</option>
+        </select>
+      </div>
       <div class="error-box" id="historyError"></div>
       <div class="history-list" id="historyList"></div>
     </div>
@@ -500,6 +513,7 @@
 
     stub.style.display = "none";
     document.getElementById("historySearch").value = "";
+    document.getElementById("historySort").value = "desc";
     document.getElementById("historyError").style.display = "none";
     panel.style.display = "block";
     await loadHistory();
@@ -511,16 +525,25 @@
     searchDebounceTimer = setTimeout(() => loadHistory(q), 300);
   });
 
+  document.getElementById("historySort").addEventListener("change", () => {
+    const q = document.getElementById("historySearch").value.trim();
+    loadHistory(q);
+  });
+
   async function loadHistory(query = "") {
     const list = document.getElementById("historyList");
+    const sort = document.getElementById("historySort").value;
     list.innerHTML = '<div class="empty-note">Loading…</div>';
 
     const token = await getToken();
     if (!token) { renderAuthedState(); return; }
 
     try {
-      const url = query ? `${API_BASE}/history?q=${encodeURIComponent(query)}` : `${API_BASE}/history`;
-      const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+      const params = new URLSearchParams({ sort });
+      if (query) params.set("q", query);
+      const response = await fetch(`${API_BASE}/history?${params.toString()}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Couldn't load history.");
 
