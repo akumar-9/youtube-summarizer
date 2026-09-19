@@ -212,7 +212,11 @@ async def summarize_video(req: SummarizeRequest, user_id: str = Depends(get_curr
 
 
 @app.get("/history")
-def get_history(user_id: str = Depends(get_current_user), q: str | None = Query(default=None)):
+def get_history(
+    user_id: str = Depends(get_current_user),
+    q: str | None = Query(default=None),
+    sort: str = Query(default="desc", pattern="^(asc|desc)$"),
+):
     query = (
         supabase.table("summaries")
         .select("id, video_url, summary, title, channel_name, thumbnail_url, created_at")
@@ -224,7 +228,7 @@ def get_history(user_id: str = Depends(get_current_user), q: str | None = Query(
         safe_q = q.replace(",", " ").replace("%", "")
         query = query.or_(f"title.ilike.%{safe_q}%,channel_name.ilike.%{safe_q}%,video_url.ilike.%{safe_q}%")
 
-    result = query.order("created_at", desc=True).limit(50).execute()
+    result = query.order("created_at", desc=(sort == "desc")).limit(50).execute()
     return {"history": result.data}
 
 
