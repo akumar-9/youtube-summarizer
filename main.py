@@ -167,11 +167,12 @@ async def summarize_video(req: SummarizeRequest, user_id: str = Depends(get_curr
             started = False
             full_text = ""
             try:
-                async for chunk in client.aio.models.generate_content_stream(
+                stream = await client.aio.models.generate_content_stream(
                     model=model_name,
                     contents=[video_part, prompt],
                     config=gen_config,
-                ):
+                )
+                async for chunk in stream:
                     if chunk.text:
                         started = True
                         full_text += chunk.text
