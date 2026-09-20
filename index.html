@@ -426,6 +426,25 @@
   });
 
   // ---- Action item checklists: persist checked state per video ----
+
+  // Gemini won't always emit exact GFM checkbox syntax ("- [ ] text") —
+  // a missing space, a numbered list, or a bolded lead-in before the
+  // checkbox all silently break `marked`'s task-list detection, leaving
+  // plain text with literal "[ ]" instead of a real checkbox. This
+  // normalizes the common variations before parsing.
+  function normalizeChecklistMarkdown(text) {
+    return text.split("\n").map((line) => {
+      const match = line.match(/\[\s?([xX]?)\s?\]/);
+      if (!match) return line;
+      const checked = match[1].toLowerCase() === "x";
+      let rest = line.slice(0, match.index) + line.slice(match.index + match[0].length);
+      rest = rest.replace(/^(?:[-*]\s+|\d+[.)]\s+)?/, "");
+      rest = rest.replace(/^\*\*(.*?)\*\*\s*/, "$1 ");
+      rest = rest.trim();
+      return `- [${checked ? "x" : " "}] ${rest}`;
+    }).join("\n");
+  }
+
   function checklistKey(videoId) {
     return `checklist:${videoId}`;
   }
@@ -561,7 +580,7 @@
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         currentSummary = buffer;
-        outputDiv.innerHTML = marked.parse(buffer);
+        outputDiv.innerHTML = marked.parse(normalizeChecklistMarkdown(buffer));
       }
 
       linkifyTimestamps(outputDiv, currentVideoId);
@@ -699,7 +718,7 @@
     currentSummary = item.summary;
     currentVideoId = extractVideoId(item.video_url);
     const outputDiv = document.getElementById("output");
-    outputDiv.innerHTML = marked.parse(item.summary);
+    outputDiv.innerHTML = marked.parse(normalizeChecklistMarkdown(item.summary));
     linkifyTimestamps(outputDiv, currentVideoId);
     activateChecklist(outputDiv, currentVideoId);
     document.getElementById("cacheBadge").style.display = "none";
