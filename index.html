@@ -141,17 +141,14 @@
   #output li { margin-bottom: 6px; }
   #output strong { background: rgba(242,212,62,0.4); font-weight: 600; padding: 0 2px; }
   #output p { margin: 0 0 12px; }
-  
-  /* Task list styling via toggled JavaScript classes */
-  #output ul.task-list { list-style: none; padding-left: 0; }
-  #output li.task-list-item {
+  #output ul.checklist-ul { list-style: none; padding-left: 0; }
+  #output li.checklist-li {
     display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; list-style: none;
   }
   #output li input[type="checkbox"] {
     margin-top: 4px; width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; flex-shrink: 0;
   }
   #output li.checklist-done { color: var(--muted); text-decoration: line-through; }
-  
   .history-panel { margin-top: 14px; }
   .history-controls { display: flex; gap: 8px; margin-bottom: 4px; }
   .history-controls input { flex: 1; min-width: 0; }
@@ -369,7 +366,8 @@
   }
 
   // Pre-fills (and optionally auto-runs) a summary when arriving via
-  // ?url=<video>&autorun=1
+  // ?url=<video>&autorun=1 — how the browser extension hands off a video
+  // without the user copy-pasting anything.
   let autoRunHandled = false;
   function handleIncomingUrl(isLoggedIn) {
     const params = new URLSearchParams(window.location.search);
@@ -384,6 +382,7 @@
 
     if (isLoggedIn && params.get("autorun") === "1" && !autoRunHandled) {
       autoRunHandled = true;
+      // Clean the URL so refreshing the tab later doesn't re-trigger this.
       window.history.replaceState({}, document.title, window.location.pathname);
       generateSummary();
     }
@@ -428,6 +427,11 @@
 
   // ---- Action item checklists: persist checked state per video ----
 
+  // Gemini won't always emit exact GFM checkbox syntax ("- [ ] text") —
+  // a missing space, a numbered list, or a bolded lead-in before the
+  // checkbox all silently break `marked`'s task-list detection, leaving
+  // plain text with literal "[ ]" instead of a real checkbox. This
+  // normalizes the common variations before parsing.
   function normalizeChecklistMarkdown(text) {
     return text.split("\n").map((line) => {
       const match = line.match(/\[\s?([xX]?)\s?\]/);
@@ -445,21 +449,7 @@
     return `checklist:${videoId}`;
   }
 
-  // Applies classes directly to checklist items and parent lists
-  function updateChecklistClasses(container) {
-    const boxes = container.querySelectorAll('li input[type="checkbox"]');
-    boxes.forEach((box) => {
-      const li = box.closest("li");
-      if (li) {
-        li.classList.add("task-list-item");
-        const parentUl = li.closest("ul");
-        if (parentUl) parentUl.classList.add("task-list");
-      }
-    });
-  }
-
   function activateChecklist(container, videoId) {
-    updateChecklistClasses(container);
     if (!videoId) return;
     const boxes = container.querySelectorAll('li input[type="checkbox"]');
     if (!boxes.length) return;
@@ -473,6 +463,11 @@
     boxes.forEach((box, i) => {
       box.disabled = false;
       const li = box.closest("li");
+      if (li) {
+        li.classList.add("checklist-li");
+        const list = li.closest("ul, ol");
+        if (list) list.classList.add("checklist-ul");
+      }
       if (saved[i]) {
         box.checked = true;
         if (li) li.classList.add("checklist-done");
@@ -486,6 +481,9 @@
   }
 
   // ---- Chapter timestamps → clickable links ----
+  // The model outputs plain "MM:SS — description" text; this walks the
+  // rendered output and turns those timestamps into links that jump to
+  // that exact second in the video.
   function linkifyTimestamps(container, videoId) {
     if (!videoId) return;
     const tsPattern = /\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b/g;
@@ -554,6 +552,9 @@
     currentSummary = "";
     stub.style.display = "block";
 
+    // Free-tier hosting spins the backend down after inactivity — the
+    // first request after idle time can take 30-60s just to wake it up.
+    // Without this, that delay looks identical to the app being stuck.
     const coldStartTimer = setTimeout(() => {
       btn.innerHTML = '<span class="reel"></span> Waking up the server…';
     }, 4000);
@@ -585,7 +586,6 @@
         buffer += decoder.decode(value, { stream: true });
         currentSummary = buffer;
         outputDiv.innerHTML = marked.parse(normalizeChecklistMarkdown(buffer));
-        updateChecklistClasses(outputDiv);
       }
 
       linkifyTimestamps(outputDiv, currentVideoId);
