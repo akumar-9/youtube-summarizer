@@ -253,13 +253,13 @@
 </div>
 
 <script>
-
-  const SUPABASE_URL = "https://lbvmcqfdatesxvbxgcdz.supabase.co";  
-  const SUPABASE_ANON_KEY = "sb_publishable_Ek3H3fYALmp7kDgYTNvBrw_BNvR1ppJ"; 
+  // ---- Config: fill in your own project values ----
+  const SUPABASE_URL = "https://lbvmcqfdatesxvbxgcdz.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_Ek3H3fYALmp7kDgYTNvBrw_BNvR1ppJ";
   const API_BASE = "https://youtube-summarizer-jdvf.onrender.com";
 
-  const { createClient } = supabase;  
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);  
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentSummary = "";
   let authMode = "signin"; // or "signup"
@@ -476,12 +476,22 @@
     currentSummary = "";
     stub.style.display = "block";
 
+    // Free-tier hosting spins the backend down after inactivity — the
+    // first request after idle time can take 30-60s just to wake it up.
+    // Without this, that delay looks identical to the app being stuck.
+    const coldStartTimer = setTimeout(() => {
+      btn.innerHTML = '<span class="reel"></span> Waking up the server…';
+    }, 4000);
+
     try {
       const response = await fetch(`${API_BASE}/summarize`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ url: urlInput })
       });
+
+      clearTimeout(coldStartTimer);
+      btn.innerHTML = '<span class="reel"></span> Summarizing…';
 
       if (!response.ok) {
         let detail = "Something went wrong on our end.";
@@ -505,6 +515,7 @@
       linkifyTimestamps(outputDiv, currentVideoId);
       badge.style.display = isCached ? "inline-block" : "none";
     } catch (err) {
+      clearTimeout(coldStartTimer);
       errorDiv.innerText = err.message;
       errorDiv.style.display = "block";
       stub.style.display = "none";
