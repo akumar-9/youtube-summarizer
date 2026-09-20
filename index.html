@@ -141,6 +141,14 @@
   #output li { margin-bottom: 6px; }
   #output strong { background: rgba(242,212,62,0.4); font-weight: 600; padding: 0 2px; }
   #output p { margin: 0 0 12px; }
+  #output ul:has(li input[type="checkbox"]) { list-style: none; padding-left: 0; }
+  #output li:has(> input[type="checkbox"]) {
+    display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; list-style: none;
+  }
+  #output li input[type="checkbox"] {
+    margin-top: 4px; width: 16px; height: 16px; accent-color: var(--teal); cursor: pointer; flex-shrink: 0;
+  }
+  #output li.checklist-done { color: var(--muted); text-decoration: line-through; }
   .history-panel { margin-top: 14px; }
   .history-controls { display: flex; gap: 8px; margin-bottom: 4px; }
   .history-controls input { flex: 1; min-width: 0; }
@@ -417,6 +425,37 @@
     if (e.key === "Enter") generateSummary();
   });
 
+  // ---- Action item checklists: persist checked state per video ----
+  function checklistKey(videoId) {
+    return `checklist:${videoId}`;
+  }
+
+  function activateChecklist(container, videoId) {
+    if (!videoId) return;
+    const boxes = container.querySelectorAll('li input[type="checkbox"]');
+    if (!boxes.length) return;
+
+    let saved = [];
+    try {
+      const raw = localStorage.getItem(checklistKey(videoId));
+      if (raw) saved = JSON.parse(raw);
+    } catch (_) { /* ignore corrupt/unavailable storage */ }
+
+    boxes.forEach((box, i) => {
+      box.disabled = false;
+      const li = box.closest("li");
+      if (saved[i]) {
+        box.checked = true;
+        if (li) li.classList.add("checklist-done");
+      }
+      box.addEventListener("change", () => {
+        if (li) li.classList.toggle("checklist-done", box.checked);
+        const state = Array.from(boxes).map((b) => b.checked);
+        try { localStorage.setItem(checklistKey(videoId), JSON.stringify(state)); } catch (_) { /* storage full/unavailable */ }
+      });
+    });
+  }
+
   // ---- Chapter timestamps → clickable links ----
   // The model outputs plain "MM:SS — description" text; this walks the
   // rendered output and turns those timestamps into links that jump to
@@ -526,6 +565,7 @@
       }
 
       linkifyTimestamps(outputDiv, currentVideoId);
+      activateChecklist(outputDiv, currentVideoId);
       badge.style.display = isCached ? "inline-block" : "none";
     } catch (err) {
       clearTimeout(coldStartTimer);
@@ -661,6 +701,7 @@
     const outputDiv = document.getElementById("output");
     outputDiv.innerHTML = marked.parse(item.summary);
     linkifyTimestamps(outputDiv, currentVideoId);
+    activateChecklist(outputDiv, currentVideoId);
     document.getElementById("cacheBadge").style.display = "none";
     document.getElementById("historyPanel").style.display = "none";
     document.getElementById("stub").style.display = "block";
