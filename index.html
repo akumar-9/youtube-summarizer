@@ -58,6 +58,25 @@
   }
   input:focus { border-color: var(--gold-dim); }
   input::placeholder { color: #565c6a; }
+
+  #videoUrl { padding-right: 40px; }
+  .clear-btn {
+    position: absolute;
+    right: 8px;
+    top: 15px;
+    width: auto;
+    margin: 0;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    display: none;
+  }
+  .clear-btn:hover { color: var(--paper); background: var(--panel-edge); }
   .thumb-row {
     display: flex; align-items: center; gap: 12px; margin-top: 14px; height: 0;
     overflow: hidden; opacity: 0; transition: height 0.25s ease, opacity 0.25s ease;
@@ -199,6 +218,7 @@
 
     <div class="field">
       <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" />
+      <button type="button" id="clearBtn" class="clear-btn" title="Clear" onclick="clearVideoUrl()">✕</button>
       <div class="thumb-row" id="thumbRow">
         <img id="thumbImg" src="" alt="Video thumbnail" />
         <span>Looks right? Hit summarize.</span>
@@ -234,8 +254,8 @@
 
 <script>
   // ---- Config: fill in your own project values ----
-  const SUPABASE_URL = "https://lbvmcqfdatesxvbxgcdz.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_Ek3H3fYALmp7kDgYTNvBrw_BNvR1ppJ";
+  const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
   const API_BASE = "https://youtube-summarizer-jdvf.onrender.com";
 
   const { createClient } = supabase;
@@ -362,12 +382,23 @@
   }
 
   document.getElementById("videoUrl").addEventListener("input", (e) => {
-    const id = extractVideoId(e.target.value.trim());
+    const value = e.target.value.trim();
+    const id = extractVideoId(value);
     const row = document.getElementById("thumbRow");
     const img = document.getElementById("thumbImg");
     if (id) { img.src = `https://img.youtube.com/vi/${id}/mqdefault.jpg`; row.classList.add("visible"); }
     else { row.classList.remove("visible"); }
+    document.getElementById("clearBtn").style.display = value ? "block" : "none";
   });
+
+  function clearVideoUrl() {
+    const input = document.getElementById("videoUrl");
+    input.value = "";
+    input.focus();
+    document.getElementById("thumbRow").classList.remove("visible");
+    document.getElementById("clearBtn").style.display = "none";
+    document.getElementById("error").style.display = "none";
+  }
 
   document.getElementById("videoUrl").addEventListener("keydown", (e) => {
     if (e.key === "Enter") generateSummary();
