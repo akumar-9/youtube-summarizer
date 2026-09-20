@@ -76,6 +76,14 @@ def build_prompt() -> str:
       "MM:SS — short description", using the actual timestamp from the video.
       Use HH:MM:SS instead if the video is over an hour. Pick 4-8 meaningful
       moments, not every topic change.)
+    - **Action Items** (ONLY include this section if the video is genuinely
+      instructional, tutorial, or how-to in nature — e.g. a recipe, a
+      software walkthrough, a workout routine, a DIY guide. If it is not
+      that kind of video — commentary, news, vlogs, interviews, reviews,
+      entertainment — omit this section entirely, do not force it. When
+      included, list concrete steps as a GitHub-flavored markdown checklist,
+      one per line, e.g. "- [ ] Preheat the oven to 350°F". Keep each item
+      short and actually actionable, not a restatement of a takeaway.)
     - **Detailed Summary** (Break down the main topics covered)
     """
 
